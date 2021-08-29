@@ -1,0 +1,54 @@
+{
+  "author": {
+    "name": "Michael Piper",
+    "email": "hello@zeroant.co",
+    "url": "https://www.zeroant.co"
+  },
+  "bugs": {
+    "url": "https://github.com/zeroant-inc/api-signature/issues"
+  },
+  "bundleDependencies": false,
+  "deprecated": false,
+  "description": "Express/Restify middleware to authenticate HTTP requests based on api key and signature",
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "codecov": "^3.6.1",
+    "eslint": "^6.8.0",
+    "eslint-config-airbnb": "^18.0.1",
+    "eslint-config-airbnb-base": "^14.0.0",
+    "eslint-plugin-import": "^2.19.1",
+    "eslint-plugin-jsx-a11y": "^6.2.3",
+    "eslint-plugin-react": "^7.17.0",
+    "mocha": "^6.2.2",
+    "nyc": "^15.0.0"
+  },
+  "homepage": "https://github.com/zeroant-inc/api-signature#readme",
+  "keywords": [
+    "authentication",
+    "auth",
+    "http",
+    "api",
+    "rest",
+    "apiKey",
+    "key",
+    "signature",
+    "express",
+    "expressjs",
+    "restify",
+    "middleware",
+    "plugin",
+    "nodejs"
+  ],
+  "license": "MIT",
+  "main": "./lib",
+  "name": "api-signature",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zeroant-inc/api-signature.git"
+  },
+  "scripts": {
+    "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov",
+    "test": "nyc mocha"
+  },
+  "version": "0.2.3"
+}
