@@ -24,7 +24,7 @@ This basic usage example should help you get started :
 
 ```javascript
 const express = require('express');
-const apiKeyAuth = require('api-signature');
+const apiSignature = require('api-signature');
 
 const app = express();
 
@@ -53,7 +53,7 @@ function getSecret(keyId, done) {
   });
 }
 
-app.use(apiKeyAuth({ getSecret }));
+app.use(apiSignature({ getSecret }));
 
 app.get('/protected', (req, res) => {
   res.send(`Hello ${req.credentials.name}`);
@@ -64,7 +64,7 @@ app.listen(8080);
 
 ## API
 
-### apiKeyAuth(options)
+### apiSignature(options)
 
 Create an api key based authentication middleware function using the given `options` :
 
