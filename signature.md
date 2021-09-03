@@ -71,3 +71,115 @@ Currently supported algorithm names are:
 * hmac-sha1
 * hmac-sha256
 * hmac-sha512
+###### Python 3
+<pre>
+import requests
+import base64
+from datetime import datetime, timezone
+import hashlib
+import hmac
+import base64
+
+api_key="assssassa"
+api_secret="ssasassaasaas"
+def sign_headers() -> dict:
+    headers = dict()
+    if api_key and api_secret:
+        date = datetime.now(timezone.utc).strftime(
+            '%a, %d %b %Y %H:%M:%S %Z')
+        headers["Authorization"] = sign(date)
+        headers["date"] = date
+    return headers
+def encrypt(data) -> hmac.HMAC:
+    message = bytes(data, 'utf-8')
+    secret = bytes(api_secret, 'utf-8')
+    hash = hmac.new(secret, message, hashlib.sha256)
+    # to lowercase hexits
+    return hash
+
+def sign(date):
+    signature = base64.b64encode(encrypt(f"date: {date}").digest()).decode()
+    print(date, signature)
+    return f'Signature keyId="{api_key}",algorithm="hmac-sha256",signature="{signature}"'
+def main():
+    response = requests.get(
+        url="/protected",
+        headers=sign_headers()
+    )
+    print(response)
+</pre>
+###### Node.js
+<pre>
+const express = require('express');
+const request = require('request');
+const apiSignature = require('api-signature');
+const crypto = require("crypto");
+const app = express();
+
+// Create the collection of api keys
+const apiKeys = new Map();
+apiKeys.set('123456789', {
+  id: 1,
+  name: 'app1',
+  secret: 'secret1'
+});
+apiKeys.set('987654321', {
+  id: 2,
+  name: 'app2',
+  secret: 'secret2'
+});
+class Signer{
+    constructor(apiKey, apiSecret){
+        this.apiKey = apiKey;
+        this.apiSecret = apiSecret;
+    }
+    signHeaders(){
+        const headers = {};
+        if (this.apiKey  && this.apiKey){
+            const date = new Date().toUTCString();
+            headers.Authorization = this.sign(date);
+            headers.date = date;
+        }
+        return headers;
+    }
+    encrypt(data){
+        //crypto.createHmac("sha256",api_secret).update("320755").digest("hex")
+        const hash = crypto.createHmac("sha256",this.apiSecret).update(data).digest();
+        //to lowercase hexits
+        return hash
+    }
+    sign(date){
+        const signature = Buffer.from(this.encrypt(`date: ${date}`)).toString("base64");
+        console.log(date, signature);
+        return `Signature keyId="${this.apiKey}",algorithm="hmac-sha256",signature="${signature}"`;
+    }
+}
+
+// Your function to get the secret associated to the key id
+function getSecret(keyId, done) {
+  if (!apiKeys.has(keyId)) {
+    return done(new Error('Unknown api key'));
+  }
+  const clientApp = apiKeys.get(keyId);
+  done(null, clientApp.secret, {
+    id: clientApp.id,
+    name: clientApp.name
+  });
+}
+
+app.get('/unprotected', async (req, res) => {
+  const signer = new Signer('123456789',apiKeys.get('123456789').secret);
+  const response = await request.post(
+      "http://localhost:8080/protected",{
+        headers: signer.signHeaders(),
+      }
+  );
+  console.log("Success");
+  response.pipe(res);
+});
+app.post('/protected',apiSignature({ getSecret }),async (req, res) => {
+  console.log("i got here");
+  res.send(`Hello ${req.credentials.name}`);
+});
+app.listen(8080);
+</pre>

@@ -24,8 +24,9 @@ This basic usage example should help you get started :
 
 ```javascript
 const express = require('express');
+const request = require('request');
 const apiSignature = require('api-signature');
-
+const crypto = require("crypto");
 const app = express();
 
 // Create the collection of api keys
@@ -40,6 +41,31 @@ apiKeys.set('987654321', {
   name: 'app2',
   secret: 'secret2'
 });
+class Signer{
+    constructor(apiKey, apiSecret){
+        this.apiKey = apiKey;
+        this.apiSecret = apiSecret;
+    }
+    signHeaders(){
+        const headers = {};
+        if (this.apiKey  && this.apiKey){
+            const date = new Date().toUTCString();
+            headers.Authorization = this.sign(date);
+            headers.date = date;
+        }
+        return headers;
+    }
+    encrypt(data){
+        const hash = crypto.createHmac("sha256",this.apiSecret).update(data).digest();
+        //to lowercase hexits
+        return hash
+    }
+    sign(date){
+        const signature = Buffer.from(this.encrypt(`date: ${date}`)).toString("base64");
+        console.log(date, signature);
+        return `Signature keyId="${this.apiKey}",algorithm="hmac-sha256",signature="${signature}"`;
+    }
+}
 
 // Your function to get the secret associated to the key id
 function getSecret(keyId, done) {
@@ -53,12 +79,20 @@ function getSecret(keyId, done) {
   });
 }
 
-app.use(apiSignature({ getSecret }));
-
-app.get('/protected', (req, res) => {
+app.get('/unprotected', async (req, res) => {
+  const signer = new Signer('123456789',apiKeys.get('123456789').secret);
+  const response = await request.post(
+      "http://localhost:8080/protected",{
+        headers: signer.signHeaders(),
+      }
+  );
+  console.log("Success");
+  response.pipe(res);
+});
+app.post('/protected',apiSignature({ getSecret }),async (req, res) => {
+  console.log("i got here");
   res.send(`Hello ${req.credentials.name}`);
 });
-
 app.listen(8080);
 ```
 
