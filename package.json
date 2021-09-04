@@ -50,5 +50,5 @@
     "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov",
     "test": "nyc mocha"
   },
-  "version": "0.2.5-rc1"
+  "version": "0.2.5-rc2"
 }
