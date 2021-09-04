@@ -107,6 +107,7 @@ Create an api key based authentication middleware function using the given `opti
 |    `getSecret`    |   `Function`    |       `-`       | Invoked to retrieve the secret from the `keyId` |
 | `requestProperty` |    `String`     | `'credentials'` | The request property to attach the information  |
 | `requestLifetime` | `Number | null` |      `300`      | The lifetime of a request in seconds            |
+| `requiredHeaders` | `String[] | null` |      `['date']`      | The header that must be present in request signature |
 
 #### options.getSecret (REQUIRED)
 
@@ -126,7 +127,108 @@ By default, you can attach information about the client application on `req.cred
 #### options.requestLifetime (OPTIONAL)
 
 The lifetime of a request in second, by default is set to 300 seconds, set it to null to disable it. This options is used if HTTP header "date" is used to create the signature.
+#### options.requiredHeaders (OPTIONAL)
+The header that must be present in request signature example could be
+`Signature keyId="${this.apiKey}",headers="(request-target) host date",algorithm="hmac-sha256",signature="${signature}"`
+apiSignature({ getSecret, requiredHeaders:['date','host','(request-target)']})
 
+```javascript
+const express = require("express");
+const request = require("request");
+const apiSignature = require("api-signature");
+const crypto = require("crypto");
+const app = express();
+
+// Create the collection of api keys
+const apiKeys = new Map();
+apiKeys.set("123456789", {
+  id: 1,
+  name: "app1",
+  secret: "secret1",
+});
+apiKeys.set("987654321", {
+  id: 2,
+  name: "app2",
+  secret: "secret2",
+});
+class Signer {
+  constructor(apiKey, apiSecret) {
+    this.apiKey = apiKey;
+    this.apiSecret = apiSecret;
+  }
+  signHeaders(data) {
+    const headers = {};
+    if (this.apiKey && this.apiKey) {
+      const date = new Date().toUTCString();
+      headers.Authorization = this.sign({ ...data, date });
+      headers.date = date;
+    }
+    return headers;
+  }
+  encrypt(data) {
+    const hash = crypto
+      .createHmac("sha256", this.apiSecret)
+      .update(data)
+      .digest();
+    //to lowercase hexits
+    return hash;
+  }
+  sign(data = {}) {
+    const signature = Buffer.from(
+      this.encrypt(
+        Object.entries(data)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join("\n")
+      )
+    ).toString("base64");
+    console.log(data.date, signature);
+    return `Signature keyId="${
+      this.apiKey
+    }",algorithm="hmac-sha256",headers="${Object.keys(data).join(
+      " "
+    )}",signature="${signature}"`;
+  }
+}
+
+// Your function to get the secret associated to the key id
+function getSecret(keyId, done) {
+  if (!apiKeys.has(keyId)) {
+    return done(new Error("Unknown api key"));
+  }
+  const clientApp = apiKeys.get(keyId);
+  done(null, clientApp.secret, {
+    id: clientApp.id,
+    name: clientApp.name,
+  });
+}
+
+app.get("/unprotected", async (req, res) => {
+  const signer = new Signer("123456789", apiKeys.get("123456789").secret);
+  const response = await request.post("http://localhost:8080/protected", {
+    headers: {
+      ...signer.signHeaders({
+        "(request-target)": "post /protected",
+        host: "http://localhost",
+      }),
+      host: "http://localhost",
+    },
+  });
+  console.log("Success");
+  response.pipe(res);
+});
+app.post(
+  "/protected",
+  apiSignature({
+    getSecret,
+    requiredHeaders: ["date", "host", "(request-target)"],
+  }),
+  async (req, res) => {
+    console.log("i got here");
+    res.send(`Hello ${req.credentials.name}`);
+  }
+);
+app.listen(8080);
+```
 ## HTTP signature scheme
 
 Look ["HTTP signature scheme"](signature.md) to sign a HTTP request.
